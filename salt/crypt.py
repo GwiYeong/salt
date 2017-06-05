@@ -642,7 +642,7 @@ class AsyncAuth(object):
         '''
         # Make sure all key parent directories are accessible
         user = self.opts.get('user', 'root')
-        salt.utils.verify.check_path_traversal(self.opts['pki_dir'], user)
+        salt.utils.verify.check_path_traversal(self.opts['pki_dir'], user, self.opts['root_dir'])
 
         if os.path.exists(self.rsa_path):
             with salt.utils.fopen(self.rsa_path) as f:

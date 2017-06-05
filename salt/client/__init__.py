@@ -190,7 +190,8 @@ class LocalClient(object):
         # Make sure all key parent directories are accessible
         salt.utils.verify.check_path_traversal(self.opts['cachedir'],
                                                key_user,
-                                               self.skip_perm_errors)
+                                               self.skip_perm_errors,
+                                               self.opts['root_dir'])
 
         try:
             with salt.utils.fopen(keyfile, 'r') as key:

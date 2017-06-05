@@ -436,7 +436,8 @@ def get_master_key(key_user, opts, skip_perm_errors=False):
     # Make sure all key parent directories are accessible
     salt.utils.verify.check_path_traversal(opts['cachedir'],
                                            key_user,
-                                           skip_perm_errors)
+                                           skip_perm_errors,
+                                           opts['root_dir'])
 
     try:
         with salt.utils.fopen(keyfile, 'r') as key:

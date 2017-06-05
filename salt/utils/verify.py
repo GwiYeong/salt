@@ -367,8 +367,16 @@ def list_path_traversal(path):
         (head, tail) = os.path.split(head)
     return out
 
+def is_sub_dir(path, sub_path):
+    path = os.path.realpath(path)
+    sub_path = os.path.realpath(sub_path)
+    relative = os.path.relpath(path, sub_path)
+    if relative.startswith(os.pardir):
+        return False
+    else:
+        return True
 
-def check_path_traversal(path, user='root', skip_perm_errors=False):
+def check_path_traversal(path, user='root', skip_perm_errors=False, root_dir='/'):
     '''
     Walk from the root up to a directory and verify that the current
     user has access to read each directory. This is used for  making
@@ -376,7 +384,7 @@ def check_path_traversal(path, user='root', skip_perm_errors=False):
     before trying to go and generate a new key and raising an IOError
     '''
     for tpath in list_path_traversal(path):
-        if not os.access(tpath, os.R_OK):
+        if is_sub_dir(tpath, root_dir) and not os.access(tpath, os.R_OK):
             msg = 'Could not access {0}.'.format(tpath)
             if not os.path.exists(tpath):
                 msg += ' Path does not exist.'
