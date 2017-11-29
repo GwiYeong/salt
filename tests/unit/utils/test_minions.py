@@ -5,6 +5,7 @@ from __future__ import absolute_import
 
 # Import Salt Libs
 import salt.utils.minions as minions
+import salt.tgt as tgts
 
 # Import Salt Testing Libs
 from tests.support.unit import TestCase
@@ -366,3 +367,13 @@ class CkMinionsTestCase(TestCase):
         args = ['1', '2']
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
+
+    @patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
+    @patch('salt.tgt.CkMinions._pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
+    def test_modularize_test(self):
+        ckminions = minions.CkMinions({})
+        modularized_ckminions = tgts.CkMinions({'extension_modules': ''})
+        ckminion_ret = ckminions.check_minions('a*', 'glob')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
