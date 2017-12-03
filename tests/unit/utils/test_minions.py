@@ -368,12 +368,27 @@ class CkMinionsTestCase(TestCase):
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
-    @patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
-    @patch('salt.tgt.CkMinions._pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
+    @patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
+    @patch('salt.tgt.CkMinions._pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
     def test_modularize_test(self):
         ckminions = minions.CkMinions({})
         modularized_ckminions = tgts.CkMinions({'extension_modules': ''})
         ckminion_ret = ckminions.check_minions('a*', 'glob')
         modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
         self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
         self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
+
+        ckminion_ret = ckminions.check_minions('alpha,beta', 'list')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('alpha,beta', 'list')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha', 'beta']))
+
+        ckminion_ret = ckminions.check_minions('.*ta', 'pcre')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('.*ta', 'pcre')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['beta', 'delta', 'zeta', 'eta', 'theta', 'lota']))
