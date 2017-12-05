@@ -9,6 +9,6 @@ import fnmatch
 log = logging.getLogger(__name__)
 
 
-def check_minions(expr, pki_minions):
-    log.info('glob.check_minions is called')
+def check_minions(expr):
+    pki_minions = __utils__['minions.pki_minions']()
     return {'minions': fnmatch.filter(pki_minions, expr), 'missing': []}

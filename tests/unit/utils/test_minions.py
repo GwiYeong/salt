@@ -4,11 +4,18 @@
 from __future__ import absolute_import
 
 # Import Salt Libs
-import salt.utils.minions as minions
+import salt.utils.minions_origin as minions
 import salt.tgt as tgts
+import salt.tgt.glob as glob
+import salt.loader
+import tempfile
+import shutil
+import os
 
 # Import Salt Testing Libs
+from tests.support.mixins import LoaderModuleMockMixin
 from tests.support.unit import TestCase
+from tests.support.paths import TMP
 from tests.support.mock import (
     patch,
     MagicMock,
@@ -43,12 +50,35 @@ class MinionsTestCase(TestCase):
             self.assertEqual(ret, expected)
 
 
-class CkMinionsTestCase(TestCase):
+fake_opt = {
+    'pki_dir': TMP,
+    'sock_dir': TMP,
+    'transport': 'zeromq',
+    'extension_modules': ''
+}
+
+
+class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
     '''
     TestCase for salt.utils.minions.CkMinions class
     '''
+    def setup_loader_modules(self):
+        return {glob: {
+                '__utils__': {
+                    'minions.pki_minions': MagicMock(return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])
+                }
+            }
+        }
+
     def setUp(self):
+        self.pki_dir = tempfile.mkdtemp(dir=TMP)
+        fake_opt['pki_dir'] = self.pki_dir
+        # self.minions_dir = tempfile.mkdtemp(dir=os.path.join(TMP, 'minions'))
         self.ckminions = minions.CkMinions({})
+
+    def tearDown(self):
+        shutil.rmtree(self.pki_dir)
+        del self.pki_dir
 
     def test_spec_check(self):
         # Test spec-only rule
@@ -368,27 +398,54 @@ class CkMinionsTestCase(TestCase):
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
-    @patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
-        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
-    @patch('salt.tgt.CkMinions._pki_minions', MagicMock(
-        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
-    def test_modularize_test(self):
-        ckminions = minions.CkMinions({})
-        modularized_ckminions = tgts.CkMinions({'extension_modules': ''})
-        ckminion_ret = ckminions.check_minions('a*', 'glob')
-        modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
-        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
+    def test_modularize_test_glob(self):
+        ckminions = minions.CkMinions(fake_opt)
+        utils = salt.loader.utils(fake_opt)
+        # patch lazy loaded module
+        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
+            , patch.dict(utils, {'minions.pki_minions': MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
+            tgt_modules = salt.loader.tgt(fake_opt, utils)
+            modularized_ckminions = tgts.CkMinions(fake_opt)
+            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
+                ckminion_ret = ckminions.check_minions('a*', 'glob')
+                modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
+                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+                self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
 
-        ckminion_ret = ckminions.check_minions('alpha,beta', 'list')
-        modularized_ckminion_ret = modularized_ckminions.check_minions('alpha,beta', 'list')
-        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha', 'beta']))
+    def test_modularize_test_list(self):
+        ckminions = minions.CkMinions(fake_opt)
+        utils = salt.loader.utils(fake_opt)
+        # patch lazy loaded module
+        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
+            , patch.dict(utils, {'minions.pki_minions': MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
+            tgt_modules = salt.loader.tgt(fake_opt, utils)
+            modularized_ckminions = tgts.CkMinions(fake_opt)
+            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
+                ckminion_ret = ckminions.check_minions('alpha,beta', 'list')
+                modularized_ckminion_ret = modularized_ckminions.check_minions('alpha,beta', 'list')
+                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+                self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha', 'beta']))
 
-        ckminion_ret = ckminions.check_minions('.*ta', 'pcre')
-        modularized_ckminion_ret = modularized_ckminions.check_minions('.*ta', 'pcre')
-        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['beta', 'delta', 'zeta', 'eta', 'theta', 'lota']))
+    def test_modularize_test_pcre(self):
+        ckminions = minions.CkMinions(fake_opt)
+        utils = salt.loader.utils(fake_opt)
+        # patch lazy loaded module
+        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
+            , patch.dict(utils, {'minions.pki_minions': MagicMock(
+            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
+            tgt_modules = salt.loader.tgt(fake_opt, utils)
+            modularized_ckminions = tgts.CkMinions(fake_opt)
+            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
+                ckminion_ret = ckminions.check_minions('.*ta', 'pcre')
+                modularized_ckminion_ret = modularized_ckminions.check_minions('.*ta', 'pcre')
+                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+                self.assertEqual(sorted(modularized_ckminion_ret['minions']),
+                                 sorted(['beta', 'delta', 'zeta', 'eta', 'theta', 'lota']))

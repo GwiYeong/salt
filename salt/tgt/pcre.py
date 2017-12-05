@@ -9,10 +9,11 @@ import re
 log = logging.getLogger(__name__)
 
 
-def check_minions(expr, pki_minions):
+def check_minions(expr):
     '''
     Return the minions found by looking via regular expressions
     '''
+    pki_minions = __utils__['minions.pki_minions']()
     reg = re.compile(expr)
     return {'minions': [m for m in pki_minions if reg.match(m)],
             'missing': []}

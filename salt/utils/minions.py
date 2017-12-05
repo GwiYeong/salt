@@ -171,6 +171,95 @@ def nodegroup_comp(nodegroup, nodegroups, skip=None, first_call=True):
         return ret
 
 
+def get_acc():
+    # TODO: this is actually an *auth* check
+    if __opts__.get('transport', 'zeromq') in ('zeromq', 'tcp'):
+        return 'minions'
+    else:
+        return 'accepted'
+
+def pki_minions():
+
+    '''
+    Retreive complete minion list from PKI dir.
+    Respects cache if configured
+    '''
+    acc = get_acc()
+    serial = salt.payload.Serial(__opts__)
+    minions = []
+    pki_cache_fn = os.path.join(__opts__['pki_dir'], acc, '.key_cache')
+    try:
+        if __opts__['key_cache'] and os.path.exists(pki_cache_fn):
+            log.debug('Returning cached minion list')
+            with salt.utils.files.fopen(pki_cache_fn) as fn_:
+                return serial.load(fn_)
+        else:
+            minions = get_pki_dir_minions()
+        return minions
+    except OSError as exc:
+        log.error('Encountered OSError while evaluating  minions in PKI dir: {0}'.format(exc))
+        return minions
+
+
+def get_pki_dir_minions():
+    acc = get_acc()
+    minions = []
+    for fn_ in salt.utils.data.sorted_ignorecase(os.listdir(os.path.join(__opts__['pki_dir'], acc))):
+        if not fn_.startswith('.') and os.path.isfile(os.path.join(__opts__['pki_dir'], acc, fn_)):
+            minions.append(fn_)
+
+    return minions
+
+
+def check_cache_minions(greedy, filter_func):
+    '''
+    Helper function to search for minions in master caches
+    If 'greedy' return accepted minions that matched by the condition or absend in the cache.
+    If not 'greedy' return the only minions have cache data and matched by the condition.
+    '''
+    cache_enabled = __opts__.get('minion_data_cache', False)
+    cache = salt.cache.factory(__opts__)
+    if greedy:
+        minions = get_pki_dir_minions()
+    elif cache_enabled:
+        minions = cache.list('minions')
+    else:
+        return {'minions': [],
+                'missing': []}
+
+    if cache_enabled:
+        if greedy:
+            cminions = cache.list('minions')
+        else:
+            cminions = minions
+        if not cminions:
+            return {'minions': minions,
+                    'missing': []}
+        minions = set(minions)
+        for id_ in cminions:
+            if greedy and id_ not in minions:
+                continue
+            mdata = cache.fetch('minions/{0}'.format(id_), 'data')
+            if mdata is None:
+                if not greedy:
+                    minions.remove(id_)
+                continue
+
+            if not filter_func(mdata):
+                minions.remove(id_)
+
+            # search_results = mdata.get(search_type)
+            # if not salt.utils.data.subdict_match(search_results,
+            #                                      expr,
+            #                                      delimiter=delimiter,
+            #                                      regex_match=regex_match,
+            #                                      exact_match=exact_match):
+
+        minions = list(minions)
+    return {'minions': minions,
+            'missing': []}
+
+
 class CkMinions(object):
     '''
     Used to check what minions should respond from a target
@@ -198,107 +287,7 @@ class CkMinions(object):
             DEFAULT_TARGET_DELIM,
             greedy)
 
-    def _check_glob_minions(self, expr, greedy):  # pylint: disable=unused-argument
-        '''
-        Return the minions found by looking via globs
-        '''
-        return {'minions': fnmatch.filter(self._pki_minions(), expr),
-                'missing': []}
 
-    def _check_list_minions(self, expr, greedy):  # pylint: disable=unused-argument
-        '''
-        Return the minions found by looking via a list
-        '''
-        if isinstance(expr, six.string_types):
-            expr = [m for m in expr.split(',') if m]
-        minions = self._pki_minions()
-        return {'minions': [x for x in expr if x in minions],
-                'missing': [x for x in expr if x not in minions]}
-
-    def _check_pcre_minions(self, expr, greedy):  # pylint: disable=unused-argument
-        '''
-        Return the minions found by looking via regular expressions
-        '''
-        reg = re.compile(expr)
-        return {'minions': [m for m in self._pki_minions() if reg.match(m)],
-                'missing': []}
-
-    def _pki_minions(self):
-        '''
-        Retreive complete minion list from PKI dir.
-        Respects cache if configured
-        '''
-        minions = []
-        pki_cache_fn = os.path.join(self.opts['pki_dir'], self.acc, '.key_cache')
-        try:
-            if self.opts['key_cache'] and os.path.exists(pki_cache_fn):
-                log.debug('Returning cached minion list')
-                with salt.utils.files.fopen(pki_cache_fn) as fn_:
-                    return self.serial.load(fn_)
-            else:
-                for fn_ in salt.utils.data.sorted_ignorecase(os.listdir(os.path.join(self.opts['pki_dir'], self.acc))):
-                    if not fn_.startswith('.') and os.path.isfile(os.path.join(self.opts['pki_dir'], self.acc, fn_)):
-                        minions.append(fn_)
-            return minions
-        except OSError as exc:
-            log.error('Encountered OSError while evaluating  minions in PKI dir: {0}'.format(exc))
-            return minions
-
-    def _check_cache_minions(self,
-                             expr,
-                             delimiter,
-                             greedy,
-                             search_type,
-                             regex_match=False,
-                             exact_match=False):
-        '''
-        Helper function to search for minions in master caches
-        If 'greedy' return accepted minions that matched by the condition or absend in the cache.
-        If not 'greedy' return the only minions have cache data and matched by the condition.
-        '''
-        cache_enabled = self.opts.get('minion_data_cache', False)
-
-        def list_cached_minions():
-            return self.cache.list('minions')
-
-        if greedy:
-            minions = []
-            for fn_ in salt.utils.data.sorted_ignorecase(os.listdir(os.path.join(self.opts['pki_dir'], self.acc))):
-                if not fn_.startswith('.') and os.path.isfile(os.path.join(self.opts['pki_dir'], self.acc, fn_)):
-                    minions.append(fn_)
-        elif cache_enabled:
-            minions = list_cached_minions()
-        else:
-            return {'minions': [],
-                    'missing': []}
-
-        if cache_enabled:
-            if greedy:
-                cminions = list_cached_minions()
-            else:
-                cminions = minions
-            if not cminions:
-                return {'minions': minions,
-                        'missing': []}
-            minions = set(minions)
-            for id_ in cminions:
-                if greedy and id_ not in minions:
-                    continue
-                mdata = self.cache.fetch('minions/{0}'.format(id_), 'data')
-                if mdata is None:
-                    if not greedy:
-                        minions.remove(id_)
-                    continue
-                search_results = mdata.get(search_type)
-                if not salt.utils.data.subdict_match(search_results,
-                                                     expr,
-                                                     delimiter=delimiter,
-                                                     regex_match=regex_match,
-                                                     exact_match=exact_match):
-                    minions.remove(id_)
-            minions = list(minions)
-        return {'minions': minions,
-                'missing': []}
 
     def _check_grain_minions(self, expr, delimiter, greedy):
         '''

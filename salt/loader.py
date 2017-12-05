@@ -444,7 +444,7 @@ def auth(opts, whitelist=None):
     )
 
 
-def tgt(opts):
+def tgt(opts, utils=None):
     '''
     Returns the tgt modules
 
@@ -455,8 +455,7 @@ def tgt(opts):
         _module_dirs(opts, u'tgt'),
         opts,
         tag=u'tgt',
-        pack={u'__salt__': minion_mods(opts)},
-    )
+        pack={u'__utils__': utils})
 
 def fileserver(opts, backends):
     '''
