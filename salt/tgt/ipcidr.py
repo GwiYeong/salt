@@ -7,6 +7,7 @@ import logging
 
 import salt.cache
 import salt.defaults
+import salt.utils.minions
 import salt.utils.network
 from salt.ext import six
 
@@ -47,4 +48,4 @@ def check_minions(expr, greedy):
 
         return match
 
-    return __utils__['minions.check_cache_minions'](greedy, lambda mdata: _filter_func(mdata))
+    return salt.utils.minions.check_cache_minions(greedy, lambda mdata: _filter_func(mdata), __opts__)

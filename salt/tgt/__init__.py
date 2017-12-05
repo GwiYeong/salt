@@ -163,8 +163,7 @@ class CkMinions(object):
         self.opts = opts
         self.serial = salt.payload.Serial(opts)
         self.cache = salt.cache.factory(opts)
-        utils = salt.loader.utils(opts)
-        self.tgts = salt.loader.tgt(opts, utils)
+        self.tgts = salt.loader.tgt(opts)
         # TODO: this is actually an *auth* check
         if self.opts.get('transport', 'zeromq') in ('zeromq', 'tcp'):
             self.acc = 'minions'
@@ -172,7 +171,7 @@ class CkMinions(object):
             self.acc = 'accepted'
 
 
-    def _check_nodegroup_minions(self, expr, greedy):  # pylint: disable=unused-argument
+    def _check_nodegroup_minions(self, expr, delimiter, greedy):  # pylint: disable=unused-argument
         '''
         Return minions found by looking at nodegroups
         '''
@@ -203,22 +202,22 @@ class CkMinions(object):
         if not isinstance(expr, six.string_types) and not isinstance(expr, (list, tuple)):
             log.error('Compound target that is neither string, list nor tuple')
             return {'minions': [], 'missing': []}
-        minions = set(self._pki_minions())
+        minions = set(self.utils['minions.pki_minions']())
         log.debug('minions: {0}'.format(minions))
 
         if self.opts.get('minion_data_cache', False):
-            ref = {'G': self._check_grain_minions,
-                   'P': self._check_grain_pcre_minions,
-                   'I': self._check_pillar_minions,
-                   'J': self._check_pillar_pcre_minions,
-                   'L': self._check_list_minions,
+            ref = {'G': 'grain',
+                   'P': 'grain_pcre',
+                   'I': 'pillar',
+                   'J': 'pillar_pcre',
+                   'L': 'list',
                    'N': None,    # nodegroups should already be expanded
-                   'S': self._check_ipcidr_minions,
-                   'E': self._check_pcre_minions,
+                   'S': 'ipcidr',
+                   'E': 'pcre',
                    'R': self._all_minions}
             if pillar_exact:
-                ref['I'] = self._check_pillar_exact_minions
-                ref['J'] = self._check_pillar_exact_minions
+                ref['I'] = 'pillar_exact'
+                ref['J'] = 'pillar_exact'
 
             results = []
             unmatched = []
@@ -302,12 +301,11 @@ class CkMinions(object):
                         )
                         return {'minions': [], 'missing': []}
 
-                    engine_args = [target_info['pattern']]
-                    if target_info['engine'] in ('G', 'P', 'I', 'J'):
-                        engine_args.append(target_info['delimiter'] or ':')
-                    engine_args.append(greedy)
+                    if isinstance(engine, six.string_types):
+                        _results = self._check_minions_call(engine, target_info['pattern'], target_info['delimiter'] or ':', greedy)
+                    else:
+                        _results = engine()
 
-                    _results = engine(*engine_args)
                     results.append(str(set(_results['minions'])))
                     missing.extend(_results['missing'])
                     if unmatched and unmatched[-1] == '-':
@@ -383,10 +381,7 @@ class CkMinions(object):
         '''
         Return a list of all minions that have auth'd
         '''
-        mlist = []
-        for fn_ in salt.utils.data.sorted_ignorecase(os.listdir(os.path.join(self.opts['pki_dir'], self.acc))):
-            if not fn_.startswith('.') and os.path.isfile(os.path.join(self.opts['pki_dir'], self.acc, fn_)):
-                mlist.append(fn_)
+        mlist = self.utils['minions.get_pki_dir_minions']()
         return {'minions': mlist, 'missing': []}
 
     def check_minions(self,
@@ -407,7 +402,10 @@ class CkMinions(object):
     def _check_minions_call(self, tgt_type, expr, delimiter=DEFAULT_TARGET_DELIM, greedy=True):
 
         fstr = '{0}.check_minions'.format(tgt_type)
-        if tgt_type.endswith('_pcre'):
+        if 'compound' in tgt_type or 'nodegroup' in tgt_type:
+            fstr = getattr(self, '_check_{0}_minions'.format(tgt_type), None)
+            return fstr(expr, delimiter, greedy)
+        elif tgt_type.endswith('_pcre'):
             fstr = '{0}.check_pcre_minions'.format(tgt_type.split('_pcre')[0])
         elif tgt_type.endswith('_exact'):
             fstr = '{0}.check_exact_minions'.format(tgt_type.split('_exact')[0])

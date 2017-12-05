@@ -6,6 +6,7 @@ from __future__ import absolute_import
 import logging
 
 import salt.defaults
+import salt.utils.minions
 from salt.exceptions import CommandExecutionError
 
 HAS_RANGE = False
@@ -33,7 +34,7 @@ def check_minions(expr, greedy):
         )
         cache_enabled = __opts__.get('minion_data_cache', False)
         if greedy:
-            mlist = __utils__['minions.get_pki_dir_minions']()
+            mlist = salt.utils.minions.get_pki_dir_minions(__opts__)
             return {'minions': mlist,
                     'missing': []}
         elif cache_enabled:

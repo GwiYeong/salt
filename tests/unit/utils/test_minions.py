@@ -40,6 +40,7 @@ class MinionsTestCase(TestCase):
     '''
     TestCase for salt.utils.minions module functions
     '''
+
     def test_nodegroup_comp(self):
         '''
         Test a simple string nodegroup
@@ -62,19 +63,22 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
     '''
     TestCase for salt.utils.minions.CkMinions class
     '''
+
     def setup_loader_modules(self):
         return {glob: {
-                '__utils__': {
-                    'minions.pki_minions': MagicMock(return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])
-                }
+            '__utils__': {
+                'minions.pki_minions': MagicMock(
+                    return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota',
+                                  'kappa'])
             }
+        }
         }
 
     def setUp(self):
         self.pki_dir = tempfile.mkdtemp(dir=TMP)
         fake_opt['pki_dir'] = self.pki_dir
         # self.minions_dir = tempfile.mkdtemp(dir=os.path.join(TMP, 'minions'))
-        self.ckminions = minions.CkMinions({})
+        self.ckminions = tgts.CkMinions(fake_opt)
 
     def tearDown(self):
         shutil.rmtree(self.pki_dir)
@@ -132,105 +136,105 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
 
         # Test args-kwargs rules
         auth_list = [{
-                '@runner': {
-                    'test.arg': {
-                        'args': ['1', '2'],
-                        'kwargs': {
-                            'aaa': 'bbb',
-                            'ccc': 'ddd'
-                            }
-                        }
+            '@runner': {
+                'test.arg': {
+                    'args': ['1', '2'],
+                    'kwargs': {
+                        'aaa': 'bbb',
+                        'ccc': 'ddd'
                     }
-                }]
+                }
+            }
+        }]
         ret = self.ckminions.spec_check(auth_list, 'test.arg', {}, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
         args = {
-                'arg': ['1', '2', '3'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '2', '3'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd', 'zzz': 'zzz'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd', 'zzz': 'zzz'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddc'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddc'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '3'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '3'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
         args = {
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '2'],
-                }
+            'arg': ['1', '2'],
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertFalse(ret)
 
         # Test kwargs only
         auth_list = [{
-                '@runner': {
-                    'test.arg': {
-                        'kwargs': {
-                            'aaa': 'bbb',
-                            'ccc': 'ddd'
-                            }
-                        }
+            '@runner': {
+                'test.arg': {
+                    'kwargs': {
+                        'aaa': 'bbb',
+                        'ccc': 'ddd'
                     }
-                }]
+                }
+            }
+        }]
         ret = self.ckminions.spec_check(auth_list, 'test.arg', {}, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
         # Test args only
         auth_list = [{
-                '@runner': {
-                    'test.arg': {
-                        'args': ['1', '2']
-                        }
-                    }
-                }]
+            '@runner': {
+                'test.arg': {
+                    'args': ['1', '2']
+                }
+            }
+        }]
         ret = self.ckminions.spec_check(auth_list, 'test.arg', {}, 'runner')
         self.assertFalse(ret)
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
@@ -248,15 +252,15 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
                                    }]
                       }]
         args = {
-                'arg': ['1', '2'],
-                'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
-                }
+            'arg': ['1', '2'],
+            'kwarg': {'aaa': 'bbb', 'ccc': 'ddd'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
         args = {
-                'arg': ['2', '3'],
-                'kwarg': {'aaa': 'aaa', 'ccc': 'ccc'}
-                }
+            'arg': ['2', '3'],
+            'kwarg': {'aaa': 'aaa', 'ccc': 'ccc'}
+        }
         ret = self.ckminions.spec_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
@@ -301,7 +305,7 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
         ret = self.ckminions.spec_check(auth_list, 'jobs.active', {}, 'runner')
         self.assertFalse(ret)
 
-    @patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
+    @patch('salt.utils.minions.pki_minions', MagicMock(return_value=['alpha', 'beta', 'gamma']))
     def test_auth_check(self):
         # Test function-only rule
         auth_list = ['test.ping']
@@ -332,16 +336,16 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
 
         # Test an args and kwargs rule
         auth_list = [{
-                'alpha': {
-                    'test.arg': {
-                        'args': ['1', '2'],
-                        'kwargs': {
-                            'aaa': 'bbb',
-                            'ccc': 'ddd'
-                            }
-                        }
+            'alpha': {
+                'test.arg': {
+                    'args': ['1', '2'],
+                    'kwargs': {
+                        'aaa': 'bbb',
+                        'ccc': 'ddd'
                     }
-                }]
+                }
+            }
+        }]
         ret = self.ckminions.auth_check(auth_list, 'test.arg', None, 'runner')
         self.assertFalse(ret)
         ret = self.ckminions.auth_check(auth_list, 'test.arg', [], 'runner')
@@ -367,15 +371,15 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
 
         # Test kwargs only rule
         auth_list = [{
-                'alpha': {
-                    'test.arg': {
-                        'kwargs': {
-                            'aaa': 'bbb',
-                            'ccc': 'ddd'
-                            }
-                        }
+            'alpha': {
+                'test.arg': {
+                    'kwargs': {
+                        'aaa': 'bbb',
+                        'ccc': 'ddd'
                     }
-                }]
+                }
+            }
+        }]
         args = ['1', '2', {'aaa': 'bbb', 'ccc': 'ddd', '__kwarg__': True}]
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
@@ -385,12 +389,12 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
 
         # Test args only rule
         auth_list = [{
-                'alpha': {
-                    'test.arg': {
-                        'args': ['1', '2'],
-                        }
-                    }
-                }]
+            'alpha': {
+                'test.arg': {
+                    'args': ['1', '2'],
+                }
+            }
+        }]
         args = ['1', '2', {'aaa': 'bbb', 'ccc': 'ddd', '__kwarg__': True}]
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
@@ -398,54 +402,43 @@ class CkMinionsTestCase(TestCase, LoaderModuleMockMixin):
         ret = self.ckminions.auth_check(auth_list, 'test.arg', args, 'runner')
         self.assertTrue(ret)
 
+    @patch('salt.utils.minions_origin.CkMinions._pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
+    @patch('salt.utils.minions.pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
     def test_modularize_test_glob(self):
         ckminions = minions.CkMinions(fake_opt)
-        utils = salt.loader.utils(fake_opt)
-        # patch lazy loaded module
-        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
-            , patch.dict(utils, {'minions.pki_minions': MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
-            tgt_modules = salt.loader.tgt(fake_opt, utils)
-            modularized_ckminions = tgts.CkMinions(fake_opt)
-            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
-                ckminion_ret = ckminions.check_minions('a*', 'glob')
-                modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
-                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-                self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
+        modularized_ckminions = tgts.CkMinions(fake_opt)
+        ckminion_ret = ckminions.check_minions('a*', 'glob')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('a*', 'glob')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha']))
 
+    @patch('salt.utils.minions_origin.CkMinions._pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
+    @patch('salt.utils.minions.pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
     def test_modularize_test_list(self):
         ckminions = minions.CkMinions(fake_opt)
-        utils = salt.loader.utils(fake_opt)
-        # patch lazy loaded module
-        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
-            , patch.dict(utils, {'minions.pki_minions': MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
-            tgt_modules = salt.loader.tgt(fake_opt, utils)
-            modularized_ckminions = tgts.CkMinions(fake_opt)
-            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
-                ckminion_ret = ckminions.check_minions('alpha,beta', 'list')
-                modularized_ckminion_ret = modularized_ckminions.check_minions('alpha,beta', 'list')
-                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-                self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha', 'beta']))
+        modularized_ckminions = tgts.CkMinions(fake_opt)
+        ckminion_ret = ckminions.check_minions('alpha,beta', 'list')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('alpha,beta', 'list')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']), sorted(['alpha', 'beta']))
 
+    @patch('salt.utils.minions_origin.CkMinions._pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
+    @patch('salt.utils.minions.pki_minions', MagicMock(
+        return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa']))
     def test_modularize_test_pcre(self):
         ckminions = minions.CkMinions(fake_opt)
-        utils = salt.loader.utils(fake_opt)
-        # patch lazy loaded module
-        with patch('salt.utils.minions.CkMinions._pki_minions', MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])) \
-            , patch.dict(utils, {'minions.pki_minions': MagicMock(
-            return_value=['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'lota', 'kappa'])}):
-            tgt_modules = salt.loader.tgt(fake_opt, utils)
-            modularized_ckminions = tgts.CkMinions(fake_opt)
-            with patch.object(modularized_ckminions, 'tgts', tgt_modules):
-                ckminion_ret = ckminions.check_minions('.*ta', 'pcre')
-                modularized_ckminion_ret = modularized_ckminions.check_minions('.*ta', 'pcre')
-                self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
-                self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
-                self.assertEqual(sorted(modularized_ckminion_ret['minions']),
-                                 sorted(['beta', 'delta', 'zeta', 'eta', 'theta', 'lota']))
+        modularized_ckminions = tgts.CkMinions(fake_opt)
+        ckminion_ret = ckminions.check_minions('.*ta', 'pcre')
+        modularized_ckminion_ret = modularized_ckminions.check_minions('.*ta', 'pcre')
+        self.assertEqual(sorted(ckminion_ret['minions']), sorted(modularized_ckminion_ret['minions']))
+        self.assertEqual(sorted(ckminion_ret['missing']), sorted(modularized_ckminion_ret['missing']))
+        self.assertEqual(sorted(modularized_ckminion_ret['minions']),
+                         sorted(['beta', 'delta', 'zeta', 'eta', 'theta', 'lota']))
+

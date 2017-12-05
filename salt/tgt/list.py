@@ -5,6 +5,7 @@ from __future__ import absolute_import
 
 import logging
 from salt.ext import six
+import salt.utils.minions
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ def check_minions(expr):  # pylint: disable=unused-argument
     '''
     Return the minions found by looking via a list
     '''
-    pki_minions = __utils__['minions.pki_minions']()
+    pki_minions = salt.utils.minions.pki_minions(__opts__)
     if isinstance(expr, six.string_types):
         expr = [m for m in expr.split(',') if m]
     return {'minions': [x for x in expr if x in pki_minions],

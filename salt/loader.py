@@ -444,7 +444,7 @@ def auth(opts, whitelist=None):
     )
 
 
-def tgt(opts, utils=None):
+def tgt(opts):
     '''
     Returns the tgt modules
 
@@ -454,8 +454,7 @@ def tgt(opts, utils=None):
     return LazyLoader(
         _module_dirs(opts, u'tgt'),
         opts,
-        tag=u'tgt',
-        pack={u'__utils__': utils})
+        tag=u'tgt')
 
 def fileserver(opts, backends):
     '''
