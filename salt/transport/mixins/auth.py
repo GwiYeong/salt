@@ -11,6 +11,7 @@ import shutil
 import binascii
 
 # Import Salt Libs
+import salt.tgt
 import salt.crypt
 import salt.payload
 import salt.master
@@ -98,7 +99,7 @@ class AESReqServerMixin(object):
         else:
             self.cache_cli = False
             # Make an minion checker object
-            self.ckminions = salt.utils.minions.CkMinions(self.opts)
+            self.ckminions = salt.tgt.CkMinions(self.opts)
 
         self.master_key = salt.crypt.MasterKeys(self.opts)
 

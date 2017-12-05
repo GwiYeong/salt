@@ -18,6 +18,7 @@ from random import randint
 # Import Salt Libs
 import salt.auth
 import salt.crypt
+import salt.tgt
 import salt.utils.event
 import salt.utils.minions
 import salt.utils.process
@@ -698,7 +699,7 @@ class ZeroMQPubServerChannel(salt.transport.server.PubServerChannel):
     def __init__(self, opts):
         self.opts = opts
         self.serial = salt.payload.Serial(self.opts)  # TODO: in init?
-        self.ckminions = salt.utils.minions.CkMinions(self.opts)
+        self.ckminions = salt.tgt.CkMinions(self.opts)
 
     def connect(self):
         return tornado.gen.sleep(5)

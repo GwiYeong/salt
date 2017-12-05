@@ -7,147 +7,26 @@ expected to return
 # Import python libs
 from __future__ import absolute_import
 
-import fnmatch
 import logging
-import os
 import re
 
-import salt.loader
 import salt.auth.ldap
 import salt.cache
+import salt.loader
 import salt.payload
-import salt.utils.data
 import salt.utils.args
+import salt.utils.data
 import salt.utils.files
+import salt.utils.minions
 import salt.utils.network
 import salt.utils.stringutils
 import salt.utils.versions
 from salt.defaults import DEFAULT_TARGET_DELIM
-from salt.exceptions import CommandExecutionError, SaltCacheError
+from salt.exceptions import SaltCacheError
 from salt.ext import six
 
-# Import 3rd-party libs
-if six.PY3:
-    import ipaddress
-else:
-    import salt.ext.ipaddress as ipaddress
-HAS_RANGE = False
-try:
-    import seco.range  # pylint: disable=import-error
-    HAS_RANGE = True
-except ImportError:
-    pass
 
 log = logging.getLogger(__name__)
-
-
-TARGET_REX = re.compile(
-        r'''(?x)
-        (
-            (?P<engine>G|P|I|J|L|N|S|E|R)  # Possible target engines
-            (?P<delimiter>(?<=G|P|I|J).)?  # Optional delimiter for specific engines
-        @)?                                # Engine+delimiter are separated by a '@'
-                                           # character and are optional for the target
-        (?P<pattern>.+)$'''                # The pattern passed to the target engine
-    )
-
-
-def parse_target(target_expression):
-    '''Parse `target_expressing` splitting it into `engine`, `delimiter`,
-     `pattern` - returns a dict'''
-
-    match = TARGET_REX.match(target_expression)
-    if not match:
-        log.warning('Unable to parse target "{0}"'.format(target_expression))
-        ret = {
-            'engine': None,
-            'delimiter': None,
-            'pattern': target_expression,
-        }
-    else:
-        ret = match.groupdict()
-    return ret
-
-
-def nodegroup_comp(nodegroup, nodegroups, skip=None, first_call=True):
-    '''
-    Recursively expand ``nodegroup`` from ``nodegroups``; ignore nodegroups in ``skip``
-
-    If a top-level (non-recursive) call finds no nodegroups, return the original
-    nodegroup definition (for backwards compatibility). Keep track of recursive
-    calls via `first_call` argument
-    '''
-    expanded_nodegroup = False
-    if skip is None:
-        skip = set()
-    elif nodegroup in skip:
-        log.error('Failed nodegroup expansion: illegal nested nodegroup "{0}"'.format(nodegroup))
-        return ''
-
-    if nodegroup not in nodegroups:
-        log.error('Failed nodegroup expansion: unknown nodegroup "{0}"'.format(nodegroup))
-        return ''
-
-    nglookup = nodegroups[nodegroup]
-    if isinstance(nglookup, six.string_types):
-        words = nglookup.split()
-    elif isinstance(nglookup, (list, tuple)):
-        words = nglookup
-    else:
-        log.error('Nodegroup \'%s\' (%s) is neither a string, list nor tuple',
-                  nodegroup, nglookup)
-        return ''
-
-    skip.add(nodegroup)
-    ret = []
-    opers = ['and', 'or', 'not', '(', ')']
-    for word in words:
-        if not isinstance(word, six.string_types):
-            word = str(word)
-        if word in opers:
-            ret.append(word)
-        elif len(word) >= 3 and word.startswith('N@'):
-            expanded_nodegroup = True
-            ret.extend(nodegroup_comp(word[2:], nodegroups, skip=skip, first_call=False))
-        else:
-            ret.append(word)
-
-    if ret:
-        ret.insert(0, '(')
-        ret.append(')')
-
-    skip.remove(nodegroup)
-
-    log.debug('nodegroup_comp({0}) => {1}'.format(nodegroup, ret))
-    # Only return list form if a nodegroup was expanded. Otherwise return
-    # the original string to conserve backwards compat
-    if expanded_nodegroup or not first_call:
-        return ret
-    else:
-        opers_set = set(opers)
-        ret = words
-        if (set(ret) - opers_set) == set(ret):
-            # No compound operators found in nodegroup definition. Check for
-            # group type specifiers
-            group_type_re = re.compile('^[A-Z]@')
-            if not [x for x in ret if '*' in x or group_type_re.match(x)]:
-                # No group type specifiers and no wildcards. Treat this as a
-                # list of nodenames.
-                joined = 'L@' + ','.join(ret)
-                log.debug(
-                    'Nodegroup \'%s\' (%s) detected as list of nodenames. '
-                    'Assuming compound matching syntax of \'%s\'',
-                    nodegroup, ret, joined
-                )
-                # Return data must be a list of compound matching components
-                # to be fed into compound matcher. Enclose return data in list.
-                return [joined]
-
-        log.debug(
-            'No nested nodegroups detected. Using original nodegroup '
-            'definition: %s', nodegroups[nodegroup]
-        )
-        return ret
 
 
 class CkMinions(object):
@@ -161,21 +40,15 @@ class CkMinions(object):
     '''
     def __init__(self, opts):
         self.opts = opts
-        self.serial = salt.payload.Serial(opts)
         self.cache = salt.cache.factory(opts)
         self.tgts = salt.loader.tgt(opts)
-        # TODO: this is actually an *auth* check
-        if self.opts.get('transport', 'zeromq') in ('zeromq', 'tcp'):
-            self.acc = 'minions'
-        else:
-            self.acc = 'accepted'
 
 
     def _check_nodegroup_minions(self, expr, delimiter, greedy):  # pylint: disable=unused-argument
         '''
         Return minions found by looking at nodegroups
         '''
-        return self._check_compound_minions(nodegroup_comp(expr, self.opts['nodegroups']),
+        return self._check_compound_minions(salt.utils.minions.nodegroup_comp(expr, self.opts['nodegroups']),
             DEFAULT_TARGET_DELIM,
             greedy)
 
@@ -230,7 +103,7 @@ class CkMinions(object):
                 words = expr
 
             for word in words:
-                target_info = parse_target(word)
+                target_info = salt.utils.minions.parse_target(word)
 
                 # Easy check first
                 if word in opers:
@@ -381,7 +254,7 @@ class CkMinions(object):
         '''
         Return a list of all minions that have auth'd
         '''
-        mlist = self.utils['minions.get_pki_dir_minions']()
+        mlist = salt.utils.minions.get_pki_dir_minions(self.opts)
         return {'minions': mlist, 'missing': []}
 
     def check_minions(self,
@@ -455,7 +328,7 @@ class CkMinions(object):
                'N': 'node',
                None: 'glob'}
 
-        target_info = parse_target(auth_entry)
+        target_info = salt.utils.minions.parse_target(auth_entry)
         if not target_info:
             log.error('Failed to parse valid target "{0}"'.format(auth_entry))
 
@@ -870,26 +743,3 @@ class CkMinions(object):
             if good:
                 return True
         return False
-
-
-def mine_get(tgt, fun, tgt_type='glob', opts=None):
-    '''
-    Gathers the data from the specified minions' mine, pass in the target,
-    function to look up and the target type
-    '''
-    ret = {}
-    serial = salt.payload.Serial(opts)
-    checker = CkMinions(opts)
-    _res = checker.check_minions(
-            tgt,
-            tgt_type)
-    minions = _res['minions']
-    cache = salt.cache.factory(opts)
-    for minion in minions:
-        mdata = cache.fetch('minions/{0}'.format(minion), 'mine')
-        if mdata is None:
-            continue
-        fdata = mdata.get(fun)
-        if fdata:
-            ret[minion] = fdata
-    return ret

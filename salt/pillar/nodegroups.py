@@ -41,7 +41,7 @@ Configuring Nodegroups Pillar
 from __future__ import absolute_import
 
 # Import Salt libs
-from salt.utils.minions import CkMinions
+from salt.tgt import CkMinions
 
 # Import 3rd-party libs
 from salt.ext import six

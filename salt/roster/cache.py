@@ -101,6 +101,7 @@ import re
 import copy
 
 # Salt libs
+import salt.tgt
 import salt.utils.data
 import salt.utils.minions
 import salt.utils.versions
@@ -118,7 +119,7 @@ def targets(tgt, tgt_type='glob', **kwargs):  # pylint: disable=W0613
 
     The resulting roster can be configured using ``roster_order`` and ``roster_default``.
     '''
-    minions = salt.utils.minions.CkMinions(__opts__)
+    minions = salt.tgt.CkMinions(__opts__)
     _res = minions.check_minions(tgt, tgt_type)
     minions = _res['minions']
 

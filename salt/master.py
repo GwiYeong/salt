@@ -58,6 +58,7 @@ import salt.minion
 import salt.key
 import salt.acl
 import salt.engines
+import salt.tgt
 import salt.daemons.masterapi
 import salt.defaults.exitcodes
 import salt.transport.server
@@ -197,7 +198,7 @@ class Maintenance(salt.utils.process.SignalHandlingMultiprocessingProcess):
         self.schedule = salt.utils.schedule.Schedule(self.opts,
                                                      runner_client.functions_dict(),
                                                      returners=self.returners)
-        self.ckminions = salt.utils.minions.CkMinions(self.opts)
+        self.ckminions = salt.tgt.CkMinions(self.opts)
         # Make Event bus for firing
         self.event = salt.utils.event.get_master_event(self.opts, self.opts[u'sock_dir'], listen=False)
         # Init any values needed by the git ext pillar
@@ -941,7 +942,7 @@ class AESFuncs(object):
         self.opts = opts
         self.event = salt.utils.event.get_master_event(self.opts, self.opts[u'sock_dir'], listen=False)
         self.serial = salt.payload.Serial(opts)
-        self.ckminions = salt.utils.minions.CkMinions(opts)
+        self.ckminions = salt.tgt.CkMinions(opts)
         # Make a client
         self.local = salt.client.get_local_client(self.opts[u'conf_file'])
         # Create the master minion to access the external job cache
@@ -1657,7 +1658,7 @@ class ClearFuncs(object):
         # Make a client
         self.local = salt.client.get_local_client(self.opts[u'conf_file'])
         # Make an minion checker object
-        self.ckminions = salt.utils.minions.CkMinions(opts)
+        self.ckminions = salt.tgt.CkMinions(opts)
         # Make an Auth object
         self.loadauth = salt.auth.LoadAuth(opts)
         # Stand up the master Minion to access returner data

@@ -425,7 +425,7 @@ class LocalFuncsTestCase(TestCase):
                 patch('salt.acl.PublisherACL.cmd_is_blacklisted', MagicMock(return_value=False)), \
                 patch('salt.auth.LoadAuth.authenticate_key', MagicMock(return_value='fake-user-key')), \
                 patch('salt.utils.master.get_values_of_matching_keys', MagicMock(return_value=['test'])), \
-                patch('salt.utils.minions.CkMinions.auth_check', MagicMock(return_value=False)):
+                patch('salt.tgt.CkMinions.auth_check', MagicMock(return_value=False)):
             self.assertEqual(u'', self.local_funcs.publish(load))
 
 
@@ -462,7 +462,7 @@ class RemoteFuncsTestCase(TestCase):
         '''
         self.funcs.cache.store('minions/webserver', 'mine',
                                dict(ip_addr='2001:db8::1:3'))
-        with patch('salt.utils.minions.CkMinions._check_compound_minions',
+        with patch('salt.tgt.CkMinions._check_compound_minions',
                    MagicMock(return_value=(dict(
                        minions=['webserver'],
                        missing=[])))):

@@ -19,6 +19,7 @@ import salt.log
 import salt.cache
 import salt.client
 import salt.pillar
+import salt.tgt
 import salt.utils.atomicfile
 import salt.utils.files
 import salt.utils.minions
@@ -249,7 +250,7 @@ class MasterPillarUtil(object):
     def _tgt_to_list(self):
         # Return a list of minion ids that match the target and tgt_type
         minion_ids = []
-        ckminions = salt.utils.minions.CkMinions(self.opts)
+        ckminions = salt.tgt.CkMinions(self.opts)
         _res = ckminions.check_minions(self.tgt, self.tgt_type)
         minion_ids = _res['minions']
         if len(minion_ids) == 0:
@@ -465,7 +466,7 @@ class CacheWorker(MultiprocessingProcess):
         '''
         Gather currently connected minions and update the cache
         '''
-        new_mins = list(salt.utils.minions.CkMinions(self.opts).connected_ids())
+        new_mins = list(salt.tgt.CkMinions(self.opts).connected_ids())
         cc = cache_cli(self.opts)
         cc.get_cached()
         cc.put_cache([new_mins])
@@ -682,7 +683,7 @@ class ConnectedCache(MultiprocessingProcess):
 def ping_all_connected_minions(opts):
     client = salt.client.LocalClient()
     if opts['minion_data_cache']:
-        tgt = list(salt.utils.minions.CkMinions(opts).connected_ids())
+        tgt = list(salt.tgt.CkMinions(opts).connected_ids())
         form = 'list'
     else:
         tgt = '*'

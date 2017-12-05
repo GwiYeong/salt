@@ -17,6 +17,7 @@ import re
 import sys
 
 # Import salt libs
+import salt.tgt
 import salt.client
 import salt.output
 import salt.utils.files
@@ -184,7 +185,7 @@ class SaltCP(object):
             if gzip \
             else salt.utils.itertools.read_file
 
-        _res = salt.utils.minions.CkMinions(self.opts).check_minions(
+        _res = salt.tgt.CkMinions(self.opts).check_minions(
             tgt,
             tgt_type=selected_target_option or 'glob')
         minions = _res['minions']

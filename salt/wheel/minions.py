@@ -8,6 +8,7 @@ from __future__ import absolute_import
 
 # Import Salt libs
 from salt.utils.cache import CacheCli
+import salt.tgt
 import salt.config
 import salt.utils.minions
 
@@ -22,5 +23,5 @@ def connected():
         cache_cli = CacheCli(opts)
         minions = cache_cli.get_cached()
     else:
-        minions = list(salt.utils.minions.CkMinions(opts).connected_ids())
+        minions = list(salt.tgt.CkMinions(opts).connected_ids())
     return minions

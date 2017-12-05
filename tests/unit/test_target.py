@@ -11,6 +11,7 @@ from __future__ import absolute_import
 import sys
 
 # Import Salt libs
+import salt.tgt
 import salt.utils.minions
 import salt.config
 
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 class CkMinionTestCase(TestCase):
 
     def setUp(self):
-        self.ck_ = salt.utils.minions.CkMinions(salt.config.DEFAULT_MASTER_OPTS)
+        self.ck_ = salt.tgt.CkMinions(salt.config.DEFAULT_MASTER_OPTS)
 
     def tearDown(self):
         self.ck_ = None
