@@ -14,6 +14,7 @@ import time
 import stat
 
 # Import salt libs
+import salt.tgt
 import salt.acl
 import salt.crypt
 import salt.cache
@@ -34,10 +35,8 @@ import salt.utils.event
 import salt.utils.files
 import salt.utils.gitfs
 import salt.utils.verify
-import salt.utils.minions
 import salt.utils.gzip_util
 import salt.utils.jid
-import salt.utils.minions
 import salt.utils.platform
 import salt.utils.stringutils
 import salt.utils.user
@@ -413,7 +412,6 @@ class RemoteFuncs(object):
                 opts=self.opts,
                 listen=False)
         self.serial = salt.payload.Serial(opts)
-        self.ckminions = salt.utils.minions.CkMinions(opts)
         # Create the tops dict for loading external top data
         self.tops = salt.loader.tops(self.opts)
         # Make a client
@@ -468,7 +466,8 @@ class RemoteFuncs(object):
             for arg in load['arg']:
                 arg_.append(arg.split())
             load['arg'] = arg_
-        return self.ckminions.auth_check(
+        return salt.tgt.auth_check(
+                self.opts,
                 perms,
                 load['fun'],
                 load['arg'],
@@ -578,8 +577,8 @@ class RemoteFuncs(object):
             match_type = 'pillar_exact'
         if match_type.lower() == 'compound':
             match_type = 'compound_pillar_exact'
-        checker = salt.utils.minions.CkMinions(self.opts)
-        _res = checker.check_minions(
+        _res = salt.tgt.check_minions(
+                self.opts,
                 load['tgt'],
                 match_type,
                 greedy=False
@@ -902,7 +901,8 @@ class RemoteFuncs(object):
                 pub_load['tgt_type'] = load['tgt_type']
         ret = {}
         ret['jid'] = self.local.cmd_async(**pub_load)
-        _res = self.ckminions.check_minions(
+        _res = salt.tgt.check_minions(
+                self.opts,
                 load['tgt'],
                 pub_load['tgt_type'])
         ret['minions'] = _res['minions']
@@ -1026,8 +1026,6 @@ class LocalFuncs(object):
                 listen=False)
         # Make a client
         self.local = salt.client.get_local_client(mopts=self.opts)
-        # Make an minion checker object
-        self.ckminions = salt.utils.minions.CkMinions(opts)
         # Make an Auth object
         self.loadauth = salt.auth.LoadAuth(opts)
         # Stand up the master Minion to access returner data
@@ -1054,7 +1052,7 @@ class LocalFuncs(object):
             return {'error': error}
 
         # Authorize
-        runner_check = self.ckminions.runner_check(
+        runner_check = salt.tgt.runner_check(
             auth_check.get('auth_list', []),
             load['fun'],
             load['kwarg']
@@ -1065,7 +1063,7 @@ class LocalFuncs(object):
                               'message': 'Authentication failure of type "{0}" occurred '
                                          'for user {1}.'.format(auth_type, username)}}
         elif isinstance(runner_check, dict) and 'error' in runner_check:
-            # A dictionary with an error name/message was handled by ckminions.runner_check
+            # A dictionary with an error name/message was handled by salt.tgt.runner_check
             return runner_check
 
         # Authorized. Do the job!
@@ -1105,7 +1103,7 @@ class LocalFuncs(object):
         # Authorize
         username = auth_check.get('username')
         if auth_type != 'user':
-            wheel_check = self.ckminions.wheel_check(
+            wheel_check = salt.tgt.wheel_check(
                 auth_check.get('auth_list', []),
                 load['fun'],
                 load['kwarg']
@@ -1115,7 +1113,7 @@ class LocalFuncs(object):
                                   'message': 'Authentication failure of type "{0}" occurred for '
                                              'user {1}.'.format(auth_type, username)}}
             elif isinstance(wheel_check, dict) and 'error' in wheel_check:
-                # A dictionary with an error name/message was handled by ckminions.wheel_check
+                # A dictionary with an error name/message was handled by salt.tgt.wheel_check
                 return wheel_check
 
         # Authenticated. Do the job.
@@ -1189,7 +1187,8 @@ class LocalFuncs(object):
 
         # Retrieve the minions list
         delimiter = load.get('kwargs', {}).get('delimiter', DEFAULT_TARGET_DELIM)
-        _res = self.ckminions.check_minions(
+        _res = salt.tgt.check_minions(
+            self.opts,
             load['tgt'],
             load.get('tgt_type', 'glob'),
             delimiter
@@ -1216,7 +1215,8 @@ class LocalFuncs(object):
         # All Token, Eauth, and non-root users must pass the authorization check
         if auth_type != 'user' or (auth_type == 'user' and auth_list):
             # Authorize the request
-            authorized = self.ckminions.auth_check(
+            authorized = salt.tgt.auth_check(
+                self.opts,
                 auth_list,
                 load['fun'],
                 load['arg'],

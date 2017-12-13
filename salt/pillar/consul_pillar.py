@@ -127,9 +127,9 @@ import logging
 import re
 import yaml
 
+import salt.tgt
 from salt.exceptions import CommandExecutionError
 from salt.utils.dictupdate import update as dict_merge
-import salt.utils.minions
 from salt.utils.yamlloader import SaltYamlSafeLoader
 
 # Import third party libs
@@ -166,8 +166,7 @@ def ext_pillar(minion_id,
     if match:
         opts['target'] = match.group(1)
         temp = temp.replace(match.group(0), '')
-        checker = salt.utils.minions.CkMinions(__opts__)
-        _res = checker.check_minions(opts['target'], 'compound')
+        _res = salt.tgt.check_minions(__opts__, opts['target'], 'compound')
         minions = _res['minions']
         if minion_id not in minions:
             return {}
