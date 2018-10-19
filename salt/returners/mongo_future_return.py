@@ -115,7 +115,10 @@ def _get_options(ret=None):
              'db': 'db',
              'user': 'user',
              'password': 'password',
-             'indexes': 'indexes'}
+             'indexes': 'indexes',
+             'reuse_connection': 'reuse_connection',
+             'connect_timeout_ms': 'connect_timeout_ms',
+             'server_selection_timeout_ms': 'server_selection_timeout_ms'}
 
     _options = salt.returners.get_returner_options(__virtualname__,
                                                    ret,
@@ -125,15 +128,54 @@ def _get_options(ret=None):
     return _options
 
 
+__conn__ = None
+
+
+def _new_conn(options):
+
+    host = options.get('host')
+    port = options.get('port')
+    kwargs = {}
+    if options.get('connect_timeout_ms', None):
+        kwargs.update({'connect_timeout_ms': options.get('connect_timeout_ms', None)})
+    if options.get('server_selection_timeout_ms', None):
+        kwargs.update({'server_selection_timeout_ms': options.get('server_selection_timeout_ms', None)})
+
+    if float(version) > 2.3:
+        return pymongo.MongoClient(host, port, **kwargs)
+    else:
+        return pymongo.Connection(host, port)
+
+
+def _create_conn(options):
+    global __conn__
+
+    db_ = options.get('db')
+    reuse_connection = options.get('reuse_connection', False)
+
+    if not reuse_connection:
+        conn = _new_conn(options)
+        return conn, conn[db_]
+
+    if not __conn__:
+        __conn__ = _new_conn(options)
+
+    try:
+        # testing that connection is available now in every time before return connection
+        p_ret = __conn__[db_].command('ping')
+    except Exception as e:
+        log.error(e)
+        __conn__ = _new_conn(options)
+
+    return __conn__, __conn__[db_]
+
+
 def _get_conn(ret):
     '''
     Return a mongodb connection object
     '''
     _options = _get_options(ret)
 
-    host = _options.get('host')
-    port = _options.get('port')
-    db_ = _options.get('db')
     user = _options.get('user')
     password = _options.get('password')
     indexes = _options.get('indexes', False)
@@ -142,12 +184,7 @@ def _get_conn(ret):
     # pymongo versions < 2.3 until then there are
     # a bunch of these sections that need to be supported
 
-    if float(version) > 2.3:
-        conn = pymongo.MongoClient(host, port)
-    else:
-        conn = pymongo.Connection(host, port)
-    mdb = conn[db_]
-
+    conn, mdb = _create_conn(_options)
     if user and password:
         mdb.authenticate(user, password)
 
@@ -262,7 +299,8 @@ def get_load(jid):
     Return the load associated with a given job id
     '''
     conn, mdb = _get_conn(ret=None)
-    return mdb.jobs.find_one({'jid': jid}, {'_id': 0})
+    ret = mdb.jobs.find_one({'jid': jid}, {'_id': 0})
+    return ret if ret else {}
 
 
 def get_jid(jid):
